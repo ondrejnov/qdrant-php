@@ -12,7 +12,7 @@ use Qdrant\Models\Filter\Filter;
 use Qdrant\Models\Traits\ProtectedPropertyAccessor;
 use Qdrant\Models\VectorStructInterface;
 
-class QueryRequest implements RequestModel
+class QueryRequest
 {
     use ProtectedPropertyAccessor;
 

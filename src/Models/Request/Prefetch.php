@@ -11,7 +11,7 @@ namespace Qdrant\Models\Request;
 use Qdrant\Models\Filter\Filter;
 use Qdrant\Models\VectorStructInterface;
 
-class Prefetch implements RequestModel
+class Prefetch
 {
     protected ?Filter $filter = null;
 
