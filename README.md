@@ -137,3 +137,93 @@ foreach ($response['result'] as $item) {
     echo $item['score'] . ';' . $item['payload']['id'] . ';' . $item['payload']['meta_data'] . PHP_EOL;
 }
 ```
+
+### Hybrid Search (Dense + Sparse Vectors)
+
+Hybrid search combines dense vectors (semantic search) with sparse vectors (keyword/lexical search) for better search results. This is done using the prefetch mechanism and fusion algorithms like RRF (Reciprocal Rank Fusion).
+
+#### Creating a Collection with Dense and Sparse Vectors
+
+```php
+use Qdrant\Models\Request\CreateCollection;
+use Qdrant\Models\Request\VectorParams;
+
+$createCollection = new CreateCollection();
+// Add dense vector
+$createCollection->addVector(new VectorParams(1536, VectorParams::DISTANCE_COSINE), 'dense');
+// Note: Sparse vectors are configured separately in Qdrant
+
+$response = $client->collections('hybrid-collection')->create($createCollection);
+```
+
+#### Performing Hybrid Search
+
+```php
+use Qdrant\Models\Request\Prefetch;
+use Qdrant\Models\Request\QueryRequest;
+use Qdrant\Models\SparseVectorStruct;
+use Qdrant\Models\VectorStruct;
+
+// Create dense vector (e.g., from OpenAI embeddings)
+$denseVector = new VectorStruct($embedding, 'dense');
+
+// Create sparse vector (e.g., from BM25 or SPLADE model)
+// indices: positions of non-zero values, values: the weights at those positions
+$sparseVector = new SparseVectorStruct([1, 42, 1337], [0.22, 0.8, 0.5], 'sparse');
+
+// Create prefetch for dense vector search
+$densePrefetch = (new Prefetch($denseVector))
+    ->setUsing('dense')
+    ->setLimit(20);
+
+// Create prefetch for sparse vector search
+$sparsePrefetch = (new Prefetch($sparseVector))
+    ->setUsing('sparse')
+    ->setLimit(20);
+
+// Create hybrid query with RRF fusion
+$queryRequest = (new QueryRequest(['fusion' => 'rrf']))
+    ->addPrefetch($densePrefetch)
+    ->addPrefetch($sparsePrefetch)
+    ->setLimit(10)
+    ->setWithPayload(true);
+
+$response = $client->collections('hybrid-collection')->points()->query($queryRequest);
+
+foreach ($response['result'] as $item) {
+    echo $item['score'] . ';' . $item['id'] . PHP_EOL;
+}
+```
+
+#### Hybrid Search with Filters
+
+```php
+use Qdrant\Models\Filter\Condition\MatchString;
+use Qdrant\Models\Filter\Filter;
+
+$queryRequest = (new QueryRequest(['fusion' => 'rrf']))
+    ->addPrefetch($densePrefetch)
+    ->addPrefetch($sparsePrefetch)
+    ->setFilter(
+        (new Filter())->addMust(
+            new MatchString('category', 'electronics')
+        )
+    )
+    ->setLimit(10)
+    ->setWithPayload(true);
+
+$response = $client->collections('hybrid-collection')->points()->query($queryRequest);
+```
+
+#### Simple Query (without hybrid/prefetch)
+
+You can also use the query API for simple vector searches:
+
+```php
+$queryRequest = (new QueryRequest($denseVector))
+    ->setUsing('dense')
+    ->setLimit(10)
+    ->setWithPayload(true);
+
+$response = $client->collections('contents')->points()->query($queryRequest);
+```
