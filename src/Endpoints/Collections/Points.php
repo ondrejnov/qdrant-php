@@ -17,6 +17,7 @@ use Qdrant\Exception\InvalidArgumentException;
 use Qdrant\Models\Filter\Filter;
 use Qdrant\Models\PointsStruct;
 use Qdrant\Models\Request\PointsBatch;
+use Qdrant\Models\Request\QueryRequest;
 use Qdrant\Models\Request\ScrollRequest;
 use Qdrant\Models\Request\SearchRequest;
 use Qdrant\Response;
@@ -43,6 +44,22 @@ class Points extends AbstractEndpoint
                 'POST',
                 'collections/' . $this->collectionName . '/points/search' . $this->queryBuild($queryParams),
                 $searchParams->toArray()
+            )
+        );
+    }
+
+    /**
+     * Universal query API supporting hybrid search with prefetch
+     *
+     * @throws InvalidArgumentException
+     */
+    public function query(QueryRequest $queryParams, array $queryParamsUrl = []): Response
+    {
+        return $this->client->execute(
+            $this->createRequest(
+                'POST',
+                'collections/' . $this->collectionName . '/points/query' . $this->queryBuild($queryParamsUrl),
+                $queryParams->toArray()
             )
         );
     }
